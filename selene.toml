@@ -1,0 +1,4 @@
+[selene]
+std = "roblox"           # teach Selene about Roblox globals
+# optional:
+exclude = ["**/_Index/**"]

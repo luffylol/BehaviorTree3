@@ -1,0 +1,17 @@
+[package]
+name = "luffylol/behavior-tree"
+version = "0.1.0"
+description = "Fork of Behavior Trees 5 (adds pre-emption) for Roblox (creator/runtime)"
+license = "MIT"
+realm = "shared"                # "server" or "client" if you want to restrict
+registry = "https://github.com/UpliftGames/wally-index"
+
+include = [
+  "wally.toml",
+  "src",
+  "src/**",
+]
+
+[dependencies]
+
+[dev-dependencies]
