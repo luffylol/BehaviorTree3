@@ -40,7 +40,7 @@ local CollectionService = game:GetService("CollectionService")
 local IsStudio = RunService:IsRunning() and RunService:IsStudio()
 
 local BehaviorTree = {}
-local SUCCESS, FAIL, RUNNING = 1, 2, 3
+local SUCCESS, FAIL, RUNNING, ABORT = 1, 2, 3, 4
 
 -- Debug support for studio plugin (optional)
 local RunningTreesFolder
@@ -406,12 +406,12 @@ function TreeProto:_cancelRunning(obj, status, index, ...)
 			node.finish(obj, status or FAIL, ...)
 		end
 	elseif node.type == "tree" then
-		node.tree:_cancelRunning(obj, status or FAIL, nil, ...)
+		node.tree:_cancelRunning(obj, status or ABORT, nil, ...)
 	end
 end
 
 function TreeProto:abort(obj, index, status, ...)
-	self:_cancelRunning(obj, status or FAIL, index, ...)
+	self:_cancelRunning(obj, status or ABORT, index, ...)
 end
 
 local function set_contains(set, idx)
@@ -556,7 +556,6 @@ function TreeProto:run(obj, ...)
 				data.paused = true
 				break
 			else
-				local prevRunningIndex = isResume and data.index or nil
 				if prevRunningIndex then
 					if result == SUCCESS then
 						if set_contains(node.on_success_abort, prevRunningIndex) then
