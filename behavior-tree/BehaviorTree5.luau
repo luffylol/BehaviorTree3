@@ -178,8 +178,9 @@ local function ProcessNode(node, nodes)
 		local repeatStartIndex = #nodes + 1
 		local repeatCount = node.params.count and node.params.count > 0 and node.params.count or nil
 
+		local rep = nil
 		if repeatCount and repeatCount > 0 then
-			local rep = addNode(nodes, "repeat")
+			rep = addNode(nodes, "repeat")
 			rep.repeatGoal = repeatCount
 			rep.repeatCount = 0
 			rep.onsuccess = true
@@ -195,8 +196,13 @@ local function ProcessNode(node, nodes)
 		repEnd.onsuccess = true
 		repEnd.onfail = false
 
+		if rep then
+			rep.onsuccess = #nodes
+			rep.onfail = #nodes
+		end
+
 		local breakOnFail = node.params.breakonfail
-		for i = childBefore, #nodes do
+		for i = childBefore, #nodes - 1 do
 			local n = nodes[i]
 			if (n.onsuccess == true) or (n.onsuccess == false and not breakOnFail) then
 				n.onsuccess = repeatStartIndex
@@ -221,6 +227,7 @@ local function ProcessNode(node, nodes)
 		local repeatStartIndex = #nodes + 1
 		local repeatCount = node.params.count and node.params.count > 0 and node.params.count or nil
 
+		local rep = nil
 		if repeatCount and repeatCount > 0 then
 			local rep = addNode(nodes, "repeat")
 			rep.repeatGoal = repeatCount
@@ -422,6 +429,27 @@ function TreeProto:_cancelRunning(obj, status, index, ...)
 	elseif node.type == "tree" then
 		node.tree:_cancelRunning(obj, status or ABORT, nil, ...)
 	end
+
+	local onsuccess = self.nodes[node.onsuccess]
+	local onfail = self.nodes[node.onfail]
+
+	if onsuccess and onsuccess.type and onsuccess.type == "repeat" then
+		onsuccess.repeatCount = 0
+	end
+
+	if onsuccess.type == "repeat-end" then
+		-- This is the case of node failure during a break on fail in repeat
+		self.nodes[onsuccess.repIndex].repeatCount = 0
+	end
+
+	if onfail and onfail.type and onfail.type == "repeat" then
+		onfail.repeatCount = 0
+	end
+
+	if onfail.type == "repeat-end" then
+		-- This is the case of node failure during a break on fail in repeat
+		self.nodes[onfail.repIndex].repeatCount = 0
+	end
 end
 
 function TreeProto:abort(obj, index, status, ...)
@@ -595,8 +623,8 @@ function TreeProto:run(obj, ...)
 		elseif node.type == "repeat" then
 			if data.index < lastNodeIndex then
 				-- we increment on any back-track.
-				print("repeat")
 				node.repeatCount = node.repeatCount + 1
+				print(node.repeatCount)
 			end
 			if node.repeatCount >= node.repeatGoal then
 				node.repeatCount = 0
@@ -606,6 +634,7 @@ function TreeProto:run(obj, ...)
 			end
 		elseif node.type == "repeat-end" then
 			nodes[node.repIndex].repeatCount = 0
+			data.index = data.index + 1
 		elseif node.type == "succeed" then
 			data.index = node.onsuccess
 		elseif node.type == "fail" then
