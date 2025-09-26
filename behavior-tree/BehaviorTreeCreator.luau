@@ -20,7 +20,7 @@ local CollectionService = game:GetService("CollectionService")
 local TREE_TAG = "_BTree"
 
 local TreeCreator = {}
-local BehaviorTree3 = require(script.BehaviorTree5)
+local BehaviorTree3 = require(script.Parent and script.Parent:WaitForChild("BehaviorTree5"))
 
 local Trees = {}
 local SourceTasks = {}
@@ -37,16 +37,17 @@ function TreeCreator:Create(treeFolder)
 	if Tree then
 		return Tree
 	else
-		warn("Couldn't get tree for ",treeFolder)
+		warn("Couldn't get tree for ", treeFolder)
 	end
 end
 
-
-function TreeCreator:RegisterSharedBlackboard(index,tab)
-	assert(index and tab and typeof(index) == "string" and typeof(tab) == "table","RegisterSharedBlackboard takes two arguments in the form of [string] index,[table] table")
+function TreeCreator:RegisterSharedBlackboard(index, tab)
+	assert(
+		index and tab and typeof(index) == "string" and typeof(tab) == "table",
+		"RegisterSharedBlackboard takes two arguments in the form of [string] index,[table] table"
+	)
 	BehaviorTree3.SharedBlackboards[index] = tab
 end
-
 
 ---------------------------------------------
 -------------- PRIVATE METHODS --------------
@@ -57,11 +58,10 @@ local function GetModule(ModuleScript)
 		return found
 	else
 		found = require(ModuleScript)
-		SourceTasks[ModuleScript]=found
+		SourceTasks[ModuleScript] = found
 		return found
 	end
 end
-
 
 local function GetModuleScript(folder)
 	local found = folder:FindFirstChildWhichIsA("ModuleScript")
@@ -77,7 +77,6 @@ local function GetModuleScript(folder)
 		end
 	end
 end
-
 
 -- For task nodes, get module script from node folder
 function TreeCreator:_getSourceTask(folder)
@@ -96,22 +95,21 @@ function TreeCreator:_getExternalSourceTask(folder)
 	end
 end
 
-
 function TreeCreator:_buildNode(folder)
 	local nodeType = folder.Type.Value
 	local weight = folder:FindFirstChild("Weight") and folder.Weight.Value or 1
 
-	-- Get outputs, sorted in index order 
+	-- Get outputs, sorted in index order
 	local Outputs = folder.Outputs:GetChildren()
 	local orderedChildren = {}
-	for i = 1,#Outputs do
+	for i = 1, #Outputs do
 		local objvalue = Outputs[i]
-		table.insert(orderedChildren,objvalue)
+		table.insert(orderedChildren, objvalue)
 	end
-	table.sort(orderedChildren,function(a,b)
+	table.sort(orderedChildren, function(a, b)
 		return tonumber(a.Name) < tonumber(b.Name)
 	end)
-	for i = 1,#orderedChildren do
+	for i = 1, #orderedChildren do
 		orderedChildren[i] = self:_buildNode(orderedChildren[i].Value)
 	end
 
@@ -140,33 +138,40 @@ function TreeCreator:_buildNode(folder)
 		parameters.finish = sourcetask.finish
 	elseif nodeType == "Tree" then
 		local tree = self:_getTreeFromId(parameters.treeid)
-		assert(tree, string.format("could't build tree; couldn't get tree object for tree node with TreeID:  %s!",tostring(parameters.treeid)))
+		assert(
+			tree,
+			string.format(
+				"could't build tree; couldn't get tree object for tree node with TreeID:  %s!",
+				tostring(parameters.treeid)
+			)
+		)
 		parameters.tree = tree
 	end
 
 	-- Initialize node with BehaviorTree3
 	local node = BehaviorTree3[nodeType](parameters)
-	node.weight=weight
+	node.weight = weight
 
 	return node
 end
 
-
 function TreeCreator:_createTree(treeFolder)
-	print("Attempt create tree: ",treeFolder)
+	print("Attempt create tree: ", treeFolder)
 	local nodes = treeFolder.Nodes
 	local RootFolder = nodes:FindFirstChild("Root")
-	assert(RootFolder, string.format("Could not find Root under BehaviorTrees.Trees.%s.Nodes!",treeFolder.Name))
-	assert(#RootFolder.Outputs:GetChildren() == 1, string.format("The root node does not have exactly one connection for %s!",treeFolder.Name))
+	assert(RootFolder, string.format("Could not find Root under BehaviorTrees.Trees.%s.Nodes!", treeFolder.Name))
+	assert(
+		#RootFolder.Outputs:GetChildren() == 1,
+		string.format("The root node does not have exactly one connection for %s!", treeFolder.Name)
+	)
 
 	local firstNodeFolder = RootFolder.Outputs:GetChildren()[1].Value
 	local root = self:_buildNode(firstNodeFolder)
-	local Tree = BehaviorTree3:new({tree=root,treeFolder = treeFolder})
+	local Tree = BehaviorTree3:new({ tree = root, treeFolder = treeFolder })
 	Trees[treeFolder] = Tree
 	TreeIDs[treeFolder.Name] = Tree
-	return Tree	
+	return Tree
 end
-
 
 function TreeCreator:_getTree(treeFolder)
 	return Trees[treeFolder] or self:_createTree(treeFolder)
@@ -175,7 +180,7 @@ end
 function TreeCreator:_getTreeFromId(treeId)
 	local tree = TreeIDs[treeId]
 	if not tree then
-		for i,folder in pairs(CollectionService:GetTagged(TREE_TAG)) do
+		for i, folder in pairs(CollectionService:GetTagged(TREE_TAG)) do
 			if folder.Name == treeId then
 				return self:_getTree(folder)
 			end
@@ -184,6 +189,5 @@ function TreeCreator:_getTreeFromId(treeId)
 		return tree
 	end
 end
-
 
 return TreeCreator
